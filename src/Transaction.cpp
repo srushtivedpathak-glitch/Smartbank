@@ -14,7 +14,7 @@ void Transaction::setTransactionId(int id)
     transactionId = id;
 }
 
-void Transaction::setAccountNo(int account)
+void Transaction::setAccountNo(long long account)
 {
     accountNo = account;
 }
@@ -28,18 +28,17 @@ void Transaction::setTransactionType(const std::string& type)
 {
     transactionType = type;
 }
-
-int Transaction::getTransactionId()
+int Transaction::getTransactionId() const
 {
     return transactionId;
 }
 
-int Transaction::getAccountNo()
+long long Transaction::getAccountNo() const
 {
     return accountNo;
 }
 
-double Transaction::getAmount()
+double Transaction::getAmount() const
 {
     return amount;
 }
@@ -48,12 +47,12 @@ void Transaction::setTransactionDate(const std::string& date)
     transactionDate = date;
 }
 
-std::string Transaction::getTransactionDate()
+std::string Transaction::getTransactionDate() const
 {
     return transactionDate;
 }
 
-std::string Transaction::getTransactionType()
+std::string Transaction::getTransactionType() const
 {
     return transactionType;
 }

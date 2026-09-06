@@ -7,25 +7,25 @@ class Transaction
 {
 private:
     int transactionId;
-    int accountNo;
+    long long accountNo;
     double amount;
-    std::string transactionDate;
     std::string transactionType;
+    std::string transactionDate;
 
 public:
     Transaction();
 
     void setTransactionId(int id);
-    void setAccountNo(int account);
+    void setAccountNo(long long account);
     void setAmount(double value);
-    void setTransactionDate(const std::string& date);
     void setTransactionType(const std::string& type);
+    void setTransactionDate(const std::string& date);
 
-    int getTransactionId();
-    int getAccountNo();
-    double getAmount();
-    std::string getTransactionDate();
-    std::string getTransactionType();
+    int getTransactionId() const;
+    long long getAccountNo() const;
+    double getAmount() const;
+    std::string getTransactionType() const;
+    std::string getTransactionDate() const;
 };
 
 #endif
