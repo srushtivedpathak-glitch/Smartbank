@@ -23,8 +23,7 @@ bool TransactionRepository::addTransaction(const Transaction& transaction)
         std::to_string(transaction.getTransactionId()) + ", " +
         std::to_string(transaction.getAccountNo()) + ", '" +
         transaction.getTransactionType() + "', " +
-        std::to_string(transaction.getAmount()) + ", '" +
-        transaction.getTransactionDate() + "')";
+        std::to_string(transaction.getAmount()) + ", NOW())";
 
     if (mysql_query(connection, query.c_str()) != 0)
     {
@@ -35,6 +34,7 @@ bool TransactionRepository::addTransaction(const Transaction& transaction)
     }
 
     std::cout << "Transaction added successfully." << std::endl;
+
     return true;
 }
 
@@ -52,7 +52,8 @@ void TransactionRepository::displayTransactions(long long accountNo)
         "SELECT transaction_id, account_no, transaction_type, "
         "amount, transaction_date "
         "FROM transactions WHERE account_no = " +
-        std::to_string(accountNo);
+        std::to_string(accountNo) +
+        " ORDER BY transaction_date DESC";
 
     if (mysql_query(connection, query.c_str()) != 0)
     {
@@ -71,17 +72,27 @@ void TransactionRepository::displayTransactions(long long accountNo)
 
     MYSQL_ROW row;
 
-    std::cout << "\nTransactions for Account "
-              << accountNo << ":\n";
+    std::cout << "\n========================================\n";
+    std::cout << "       TRANSACTION HISTORY\n";
+    std::cout << "========================================\n";
+
+    bool found = false;
 
     while ((row = mysql_fetch_row(result)) != nullptr)
     {
-        std::cout << "Transaction ID: " << row[0] << std::endl;
-        std::cout << "Account No: " << row[1] << std::endl;
-        std::cout << "Type: " << row[2] << std::endl;
-        std::cout << "Amount: " << row[3] << std::endl;
-        std::cout << "Date: " << row[4] << std::endl;
-        std::cout << "--------------------------" << std::endl;
+        found = true;
+
+        std::cout << "Transaction ID : " << row[0] << std::endl;
+        std::cout << "Account No     : " << row[1] << std::endl;
+        std::cout << "Type           : " << row[2] << std::endl;
+        std::cout << "Amount         : " << row[3] << std::endl;
+        std::cout << "Date           : " << row[4] << std::endl;
+        std::cout << "----------------------------------------\n";
+    }
+
+    if (!found)
+    {
+        std::cout << "No transactions found for this account.\n";
     }
 
     mysql_free_result(result);

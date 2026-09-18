@@ -1,5 +1,7 @@
 #include "../include/Database.h"
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 Database::Database()
 {
@@ -51,4 +53,275 @@ void Database::disconnect()
 MYSQL* Database::getConnection()
 {
     return connection;
+}
+
+
+// --------------------------------------------------
+// DEPOSIT
+// --------------------------------------------------
+
+bool Database::deposit(long long accountNo, double amount)
+{
+    if (connection == nullptr)
+    {
+        std::cout << "Database is not connected." << std::endl;
+        return false;
+    }
+
+    if (amount <= 0)
+    {
+        std::cout << "Invalid deposit amount." << std::endl;
+        return false;
+    }
+
+    // Start transaction
+    if (mysql_query(connection, "START TRANSACTION") != 0)
+    {
+        std::cout << "Could not start database transaction: "
+                  << mysql_error(connection) << std::endl;
+        return false;
+    }
+
+    // Update account balance
+    std::stringstream updateQuery;
+
+    updateQuery << std::fixed << std::setprecision(2);
+
+    updateQuery
+        << "UPDATE accounts "
+        << "SET balance = balance + " << amount
+        << " WHERE account_no = " << accountNo;
+
+    if (mysql_query(connection, updateQuery.str().c_str()) != 0)
+    {
+        std::cout << "Deposit failed: "
+                  << mysql_error(connection) << std::endl;
+
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    // Make sure account exists
+    if (mysql_affected_rows(connection) == 0)
+    {
+        std::cout << "Account not found." << std::endl;
+
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    if (mysql_query(connection, "COMMIT") != 0)
+    {
+        std::cout << "Could not commit deposit: "
+                  << mysql_error(connection) << std::endl;
+
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    std::cout << "Deposit successful." << std::endl;
+
+    return true;
+}
+
+
+// --------------------------------------------------
+// WITHDRAW
+// --------------------------------------------------
+
+bool Database::withdraw(long long accountNo, double amount)
+{
+    if (connection == nullptr)
+    {
+        std::cout << "Database is not connected." << std::endl;
+        return false;
+    }
+
+    if (amount <= 0)
+    {
+        std::cout << "Invalid withdrawal amount." << std::endl;
+        return false;
+    }
+
+    // Start transaction
+    if (mysql_query(connection, "START TRANSACTION") != 0)
+    {
+        std::cout << "Could not start database transaction: "
+                  << mysql_error(connection) << std::endl;
+        return false;
+    }
+
+    /*
+       For Savings accounts:
+       balance must remain >= 1000.
+
+       For Current accounts:
+       the database allows the balance to go below 1000,
+       subject to the application's withdrawal rules.
+    */
+
+    std::stringstream query;
+
+    query << std::fixed << std::setprecision(2);
+
+    query
+        << "UPDATE accounts "
+        << "SET balance = balance - " << amount
+        << " WHERE account_no = " << accountNo
+        << " AND ("
+        << "Account_type <> 'Savings' "
+        << "OR balance - " << amount << " >= 1000"
+        << ")";
+
+    if (mysql_query(connection, query.str().c_str()) != 0)
+    {
+        std::cout << "Withdrawal failed: "
+                  << mysql_error(connection) << std::endl;
+
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    if (mysql_affected_rows(connection) == 0)
+    {
+        std::cout
+            << "Withdrawal failed. Account not found or "
+            << "minimum balance requirement would be violated."
+            << std::endl;
+
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    if (mysql_query(connection, "COMMIT") != 0)
+    {
+        std::cout << "Could not commit withdrawal: "
+                  << mysql_error(connection) << std::endl;
+
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    std::cout << "Withdrawal successful." << std::endl;
+
+    return true;
+}
+
+
+// --------------------------------------------------
+// ADD TRANSACTION
+// --------------------------------------------------
+
+bool Database::addTransaction(
+    int transactionId,
+    long long accountNo,
+    const std::string& transactionType,
+    double amount)
+{
+    if (connection == nullptr)
+    {
+        std::cout << "Database is not connected." << std::endl;
+        return false;
+    }
+
+    if (amount <= 0)
+    {
+        std::cout << "Invalid transaction amount." << std::endl;
+        return false;
+    }
+
+    if (transactionType != "Deposit" &&
+        transactionType != "Withdrawal")
+    {
+        std::cout << "Invalid transaction type." << std::endl;
+        return false;
+    }
+
+    std::stringstream query;
+
+    query << std::fixed << std::setprecision(2);
+
+    query
+        << "INSERT INTO transactions "
+        << "(transaction_id, account_no, transaction_type, amount, transaction_date) "
+        << "VALUES ("
+        << transactionId << ", "
+        << accountNo << ", '"
+        << transactionType << "', "
+        << amount << ", NOW())";
+
+    if (mysql_query(connection, query.str().c_str()) != 0)
+    {
+        std::cout << "Could not add transaction: "
+                  << mysql_error(connection) << std::endl;
+
+        return false;
+    }
+
+    return true;
+}
+
+
+// --------------------------------------------------
+// VIEW TRANSACTIONS
+// --------------------------------------------------
+
+void Database::viewTransactions(long long accountNo)
+{
+    if (connection == nullptr)
+    {
+        std::cout << "Database is not connected." << std::endl;
+        return;
+    }
+
+    std::stringstream query;
+
+    query
+        << "SELECT transaction_id, transaction_type, amount, "
+        << "transaction_date "
+        << "FROM transactions "
+        << "WHERE account_no = " << accountNo
+        << " ORDER BY transaction_date DESC";
+
+    if (mysql_query(connection, query.str().c_str()) != 0)
+    {
+        std::cout << "Could not retrieve transactions: "
+                  << mysql_error(connection) << std::endl;
+        return;
+    }
+
+    MYSQL_RES* result = mysql_store_result(connection);
+
+    if (result == nullptr)
+    {
+        std::cout << "Could not read transaction data: "
+                  << mysql_error(connection) << std::endl;
+        return;
+    }
+
+    MYSQL_ROW row;
+
+    std::cout << "\n========================================\n";
+    std::cout << "       TRANSACTION HISTORY\n";
+    std::cout << "========================================\n";
+
+    bool found = false;
+
+    while ((row = mysql_fetch_row(result)) != nullptr)
+    {
+        found = true;
+
+        std::cout << "Transaction ID : " << row[0] << std::endl;
+        std::cout << "Type           : " << row[1] << std::endl;
+        std::cout << "Amount         : " << row[2] << std::endl;
+        std::cout << "Date           : " << row[3] << std::endl;
+        std::cout << "----------------------------------------\n";
+    }
+
+    if (!found)
+    {
+        std::cout << "No transactions found for this account.\n";
+    }
+
+    mysql_free_result(result);
 }
