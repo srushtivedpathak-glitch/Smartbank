@@ -79,24 +79,7 @@ void transactionMenu(Database& db, TransactionRepository& repository)
             cout << "Enter Deposit Amount: ";
             cin >> amount;
 
-            if (db.deposit(accountNo, amount))
-            {
-                Transaction transaction;
-
-                transaction.setTransactionId(generateTransactionId(db));
-                transaction.setAccountNo(accountNo);
-                transaction.setAmount(amount);
-                transaction.setTransactionType("Deposit");
-
-                // MySQL will use the current date/time in the database.
-   
-
-                if (!repository.addTransaction(transaction))
-                {
-                    cout << "Warning: Balance updated, but transaction "
-                         << "record could not be added.\n";
-                }
-            }
+            db.recordAccountTransaction(accountNo, "Deposit", amount);
         }
         else if (choice == 2)
         {
@@ -109,23 +92,7 @@ void transactionMenu(Database& db, TransactionRepository& repository)
             cout << "Enter Withdrawal Amount: ";
             cin >> amount;
 
-            if (db.withdraw(accountNo, amount))
-            {
-                Transaction transaction;
-
-               transaction.setTransactionId(generateTransactionId(db));
-                transaction.setAccountNo(accountNo);
-                transaction.setAmount(amount);
-                transaction.setTransactionType("Withdrawal");
-
-                
-
-                if (!repository.addTransaction(transaction))
-                {
-                    cout << "Warning: Balance updated, but transaction "
-                         << "record could not be added.\n";
-                }
-            }
+            db.recordAccountTransaction(accountNo, "Withdrawal", amount);
         }
         else if (choice == 3)
         {
@@ -185,7 +152,7 @@ int main()
         {
         case 1:
         {
-            Customer customer;
+            Customer customer(&db);
 
             int customerChoice;
 
@@ -229,7 +196,7 @@ int main()
 
         case 2:
         {
-            Branch branch;
+            Branch branch(&db);
 
             int branchChoice;
 
@@ -263,7 +230,7 @@ int main()
 
         case 3:
         {
-            Account account;
+            Account account(&db);
 
             int accountChoice;
 
@@ -297,7 +264,7 @@ int main()
 
         case 4:
         {
-            SavingAccount saving;
+            SavingAccount saving(&db);
 
             cout << "\n----- SAVING ACCOUNT -----\n";
             saving.viewSavingAccount();
@@ -306,7 +273,7 @@ int main()
 
         case 5:
         {
-            CurrentAccount current;
+            CurrentAccount current(&db);
 
             cout << "\n----- CURRENT ACCOUNT -----\n";
             current.viewCurrentAccount();
@@ -315,7 +282,7 @@ int main()
 
         case 6:
         {
-            Loan loan;
+            Loan loan(&db);
 
             int loanChoice;
 

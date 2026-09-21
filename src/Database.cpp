@@ -55,6 +55,23 @@ MYSQL* Database::getConnection()
     return connection;
 }
 
+std::string Database::escape(const std::string& value)
+{
+    if (connection == nullptr)
+    {
+        return value;
+    }
+
+    std::string escaped(value.size() * 2 + 1, '\0');
+    unsigned long length = mysql_real_escape_string(
+        connection,
+        &escaped[0],
+        value.c_str(),
+        static_cast<unsigned long>(value.size()));
+    escaped.resize(length);
+    return escaped;
+}
+
 
 // --------------------------------------------------
 // DEPOSIT
@@ -204,6 +221,110 @@ bool Database::withdraw(long long accountNo, double amount)
 
     std::cout << "Withdrawal successful." << std::endl;
 
+    return true;
+}
+
+bool Database::recordAccountTransaction(
+    long long accountNo,
+    const std::string& transactionType,
+    double amount)
+{
+    if (connection == nullptr)
+    {
+        std::cout << "Database is not connected." << std::endl;
+        return false;
+    }
+
+    if (amount <= 0 ||
+        (transactionType != "Deposit" && transactionType != "Withdrawal"))
+    {
+        std::cout << "Invalid account transaction." << std::endl;
+        return false;
+    }
+
+    if (mysql_query(connection, "START TRANSACTION") != 0)
+    {
+        std::cout << "Could not start database transaction: "
+                  << mysql_error(connection) << std::endl;
+        return false;
+    }
+
+    std::stringstream amountText;
+    amountText << std::fixed << std::setprecision(2) << amount;
+
+    std::string updateQuery;
+    if (transactionType == "Deposit")
+    {
+        updateQuery =
+            "UPDATE accounts SET balance = balance + " + amountText.str() +
+            " WHERE account_no = " + std::to_string(accountNo);
+    }
+    else
+    {
+        updateQuery =
+            "UPDATE accounts a LEFT JOIN currentaccount c ON c.account_no = a.account_no "
+            "SET a.balance = a.balance - " + amountText.str() +
+            " WHERE a.account_no = " + std::to_string(accountNo) +
+            " AND (a.Account_type <> 'Savings' OR a.balance - " + amountText.str() + " >= 1000)"
+            " AND (a.Account_type <> 'Current' OR "
+            "(c.overdraft_limit IS NOT NULL AND a.balance - " + amountText.str() +
+            " >= -c.overdraft_limit))";
+    }
+
+    if (mysql_query(connection, updateQuery.c_str()) != 0 ||
+        mysql_affected_rows(connection) == 0)
+    {
+        std::cout << "Account update failed: " << mysql_error(connection) << std::endl;
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    if (mysql_query(
+            connection,
+            "SELECT COALESCE(MAX(transaction_id), 0) + 1 FROM transactions") != 0)
+    {
+        std::cout << "Could not generate transaction ID: "
+                  << mysql_error(connection) << std::endl;
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(connection);
+    MYSQL_ROW row = result == nullptr ? nullptr : mysql_fetch_row(result);
+    if (row == nullptr)
+    {
+        if (result != nullptr) mysql_free_result(result);
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    int transactionId = std::stoi(row[0]);
+    mysql_free_result(result);
+
+    std::string insertQuery =
+        "INSERT INTO transactions "
+        "(transaction_id, account_no, transaction_type, amount, transaction_date) VALUES (" +
+        std::to_string(transactionId) + ", " + std::to_string(accountNo) + ", '" +
+        transactionType + "', " + amountText.str() + ", NOW())";
+
+    if (mysql_query(connection, insertQuery.c_str()) != 0)
+    {
+        std::cout << "Could not add transaction: "
+                  << mysql_error(connection) << std::endl;
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    if (mysql_query(connection, "COMMIT") != 0)
+    {
+        std::cout << "Could not commit account transaction: "
+                  << mysql_error(connection) << std::endl;
+        mysql_query(connection, "ROLLBACK");
+        return false;
+    }
+
+    std::cout << transactionType << " successful. Transaction ID: "
+              << transactionId << std::endl;
     return true;
 }
 

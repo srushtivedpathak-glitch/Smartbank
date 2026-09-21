@@ -2,20 +2,21 @@
 #define ACCOUNT_H
 
 #include <string>
-using namespace std;
+
+class Database;
 
 class Account
 {
 protected:
     long long account_no;
     int customer_id;
-    string account_type;
+    std::string account_type;
     double balance;
-    string opening_date;
+    std::string opening_date;
     int branch_id;
 
 public:
-    Account();
+    explicit Account(Database* db = nullptr);
 
     void addAccount();
     void viewAccount();
@@ -24,6 +25,9 @@ public:
     void withdraw();
 
     long long getAccountNo();
+
+protected:
+    Database* database;
 };
 
 #endif

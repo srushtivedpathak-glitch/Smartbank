@@ -2,22 +2,23 @@
 #define CUSTOMER_H
 
 #include <string>
-using namespace std;
+
+class Database;
 
 class Customer
 {
 private:
     int customer_id;
-    string firstName;
-    string lastName;
-    string phoneNo;
-    string email;
-    string dob;
-    string address;
-    string gender;
+    std::string firstName;
+    std::string lastName;
+    std::string phoneNo;
+    std::string email;
+    std::string dob;
+    std::string address;
+    std::string gender;
 
 public:
-    Customer();
+    explicit Customer(Database* db = nullptr);
 
     void addCustomer();
     void viewCustomer();
@@ -26,6 +27,9 @@ public:
     void deleteCustomer();
 
     int getCustomerId();
+
+private:
+    Database* database;
 };
 
 #endif

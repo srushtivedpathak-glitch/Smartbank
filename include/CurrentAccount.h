@@ -9,7 +9,7 @@ private:
     double overdraft_limit;
 
 public:
-    CurrentAccount();
+    explicit CurrentAccount(Database* db = nullptr);
 
     void withdrawWithOverdraft();
     void viewCurrentAccount();

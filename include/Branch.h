@@ -2,18 +2,21 @@
 #define BRANCH_H
 
 #include <string>
-using namespace std;
+
+class Database;
 
 class Branch
 {
 private:
     int branch_id;
-    string branch_name;
-    string city;
-    string IFSC_code;
+    std::string branch_name;
+    std::string city;
+    std::string IFSC_code;
+
+    Database* database;
 
 public:
-    Branch();
+    explicit Branch(Database* db = nullptr);
 
     void viewBranch();
     void searchBranch();

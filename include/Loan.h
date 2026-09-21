@@ -2,21 +2,22 @@
 #define LOAN_H
 
 #include <string>
-using namespace std;
+
+class Database;
 
 class Loan
 {
 private:
     int loan_id;
     int customer_id;
-    string loan_type;
+    std::string loan_type;
     double loan_amount;
     double interest_rate;
-    string loan_date;
-    string loan_status;
+    std::string loan_date;
+    std::string loan_status;
 
 public:
-    Loan();
+    explicit Loan(Database* db = nullptr);
 
     void applyLoan();
     void viewLoan();
@@ -25,6 +26,9 @@ public:
     void calculateInterest();
 
     int getLoanId();
+
+private:
+    Database* database;
 };
 
 #endif

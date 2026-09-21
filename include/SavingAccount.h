@@ -9,7 +9,7 @@ private:
     double interest_rate;
 
 public:
-    SavingAccount();
+    explicit SavingAccount(Database* db = nullptr);
 
     void calculateInterest();
     void viewSavingAccount();
